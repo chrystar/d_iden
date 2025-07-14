@@ -14,6 +14,7 @@ import 'transaction_history_screen.dart';
 import 'send_transaction_screen.dart';
 import 'receive_screen.dart';
 import '../../../../../features/blockchain/presentation/screens/wallet_setup_screen.dart';
+import 'package:d_iden/features/auth/presentation/providers/auth_provider.dart';
 
 class WalletDashboardScreen extends StatefulWidget {
   static const routeName = '/wallet-dashboard';
@@ -77,8 +78,10 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
     });
     
     try {
-      // Using a hardcoded user ID for now - in a real app, this would come from an authentication system
-      const String userId = 'current_user_id';
+      final userId = Provider.of<AuthProvider>(context, listen: false).user?.id;
+      if (userId == null) {
+        throw Exception('No authenticated user found');
+      }
       final walletProvider = Provider.of<WalletProvider>(context, listen: false);
       
       // Check RPC connection first
@@ -267,6 +270,16 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
             AppButton(
               text: 'Create Wallet',
               onPressed: () async {
+                final userId = Provider.of<AuthProvider>(context, listen: false).user?.id;
+                if (userId == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('No authenticated user found'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
                 final result = await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const WalletSetupScreen(),

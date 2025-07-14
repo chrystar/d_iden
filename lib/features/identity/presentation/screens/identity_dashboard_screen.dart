@@ -415,6 +415,7 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
     final expiredCount = credentials.where((c) => c.status == CredentialStatus.expired).length;
     
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStatCard(
           'Active',
@@ -442,43 +443,53 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
   
   Widget _buildStatCard(String title, String count, Color color, IconData icon) {
     return Expanded(
-      child: AppCard(
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 12,
-                  ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2.0),
+        child: AppCard(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                Text(
-                  count,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 22,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      count,
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -562,22 +573,23 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
   }
   
   Widget _buildCredentialsGrid(List<VerifiableCredential> credentials) {
-    // Take only up to 4 credentials for preview
     final previewCredentials = credentials.length > 4
         ? credentials.sublist(0, 4)
         : credentials;
-    
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: 2,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
-      childAspectRatio: 0.9,
-      children: _isLoading 
+      childAspectRatio: 0.85,
+      children: _isLoading
           ? List.generate(4, (_) => const ShimmerCredentialCard())
           : previewCredentials.map((credential) {
-              return _buildCredentialCard(credential);
+              return Padding(
+                padding: const EdgeInsets.all(2.0),
+                child: _buildCredentialCard(credential),
+              );
             }).toList(),
     );
   }
