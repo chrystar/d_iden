@@ -277,9 +277,9 @@ class _WalletSetupScreenState extends State<WalletSetupScreen> {
 
   Future<void> _createWallet(BlockchainProvider provider) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.user;
+    final userId = authProvider.user?.id;
     final pin = _pinController.text.trim();
-    if (user == null) {
+    if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User not authenticated.'), backgroundColor: Colors.red),
       );
@@ -295,7 +295,7 @@ class _WalletSetupScreenState extends State<WalletSetupScreen> {
       _isLoading = true;
     });
     try {
-      await Provider.of<WalletProvider>(context, listen: false).createWallet(user.id, pin);
+      await Provider.of<WalletProvider>(context, listen: false).createWallet(userId, pin);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

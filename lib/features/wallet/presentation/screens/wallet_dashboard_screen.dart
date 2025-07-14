@@ -79,6 +79,7 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
     
     try {
       final userId = Provider.of<AuthProvider>(context, listen: false).user?.id;
+      debugPrint('WALLET LOAD: userId = ' + (userId ?? 'null'));
       if (userId == null) {
         throw Exception('No authenticated user found');
       }
@@ -98,6 +99,7 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
       
       // Load wallet data
       await walletProvider.loadWallet(userId);
+      debugPrint('WALLET LOAD: walletProvider.wallet = ' + walletProvider.wallet.toString());
       await walletProvider.loadTransactions();
       
       // Make sure we've got the wallet data
