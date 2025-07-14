@@ -10,6 +10,7 @@ enum WalletStatus {
   unlocked,
   locked,
   error,
+  networkError,
 }
 
 class WalletProvider extends ChangeNotifier {
@@ -44,15 +45,38 @@ class WalletProvider extends ChangeNotifier {
         _wallet = await _walletRepository.getWallet(userId);
         
         if (_wallet != null) {
-          await refreshWalletBalance();
-          await loadTransactions();
+          try {
+            await refreshWalletBalance();
+          } catch (e) {
+            // Handle balance refresh errors separately
+            if (e.toString().toLowerCase().contains('network connection error')) {
+              _error = 'Network connection error. Please check your internet connection.';
+              _status = WalletStatus.networkError;
+            }
+          }
+          
+          try {
+            await loadTransactions();
+          } catch (e) {
+            // Handle transaction loading errors separately
+            if (_status != WalletStatus.networkError) {
+              _error = e.toString();
+              _status = WalletStatus.error;
+            }
+          }
         }
       }
       
-      _status = WalletStatus.loaded;
+      if (_status != WalletStatus.networkError && _status != WalletStatus.error) {
+        _status = WalletStatus.loaded;
+      }
     } catch (e) {
       _error = e.toString();
-      _status = WalletStatus.error;
+      if (_error!.toLowerCase().contains('network connection error')) {
+        _status = WalletStatus.networkError;
+      } else {
+        _status = WalletStatus.error;
+      }
     }
     
     notifyListeners();
@@ -129,6 +153,9 @@ class WalletProvider extends ChangeNotifier {
       }
     } catch (e) {
       _error = e.toString();
+      if (_error!.toLowerCase().contains('network connection error')) {
+        _status = WalletStatus.networkError;
+      }
     }
     
     notifyListeners();
@@ -184,6 +211,19 @@ class WalletProvider extends ChangeNotifier {
     
     notifyListeners();
     return null;
+  }
+  
+  /// Check if the RPC connection is available
+  Future<bool> checkConnection() async {
+    try {
+      if (_walletRepository != null) {
+        return await _walletRepository.checkRpcConnection();
+      }
+      return false;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    }
   }
   
   // Reset error state

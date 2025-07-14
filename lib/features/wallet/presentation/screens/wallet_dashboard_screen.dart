@@ -78,26 +78,80 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
     try {
       // Using a hardcoded user ID for now - in a real app, this would come from an authentication system
       const String userId = 'current_user_id';
-      await Provider.of<WalletProvider>(context, listen: false).loadWallet(userId);
-      await Provider.of<WalletProvider>(context, listen: false).loadTransactions();
+      final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+      
+      // Check RPC connection first
+      final isConnected = await walletProvider.checkConnection();
+      if (!isConnected) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          _showNetworkErrorDialog();
+          return;
+        }
+      }
+      
+      // Load wallet data
+      await walletProvider.loadWallet(userId);
+      await walletProvider.loadTransactions();
+      
+      // Make sure we've got the wallet data
+      if (walletProvider.wallet == null) {
+        // If wallet is still null after loading, something went wrong
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unable to load wallet data. Please try again.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        // Wallet loaded successfully
+        if (mounted) {
+          setState(() {});
+        }
+      }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load wallet: ${e.toString()}')),
-        );
+        // Check if this is a connection error
+        final errorMsg = e.toString().toLowerCase();
+        if (errorMsg.contains('failed to fetch') || 
+            errorMsg.contains('connection') || 
+            errorMsg.contains('network') ||
+            errorMsg.contains('project id')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Network connection error. Please check your internet connection.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to load wallet: ${e.toString()}')),
+          );
+        }
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
   
   @override
   Widget build(BuildContext context) {
+    // Force provider refresh by listening to wallet provider here
+    Provider.of<WalletProvider>(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Wallet'),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -111,7 +165,16 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading wallet data...'),
+                ],
+              ),
+            )
           : _authenticated
               ? _buildWalletContent()
               : _buildAuthenticationRequired(),
@@ -150,12 +213,50 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
     );
   }
 
+  Widget _buildNetworkErrorView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.wifi_off_rounded,
+            size: 64,
+            color: Colors.orange,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Network Connection Error',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'We\'re having trouble connecting to the blockchain network. Please check your internet connection and try again.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 32),
+          AppButton(
+            text: 'Try Again',
+            onPressed: _authenticateAndLoadWallet,
+            isFullWidth: false,
+            icon: Icons.refresh,
+          ),
+        ],
+      ),
+    );
+  }
+  
   Widget _buildWalletContent() {
     final walletProvider = Provider.of<WalletProvider>(context);
     final wallet = walletProvider.wallet;
     final transactions = walletProvider.transactions;
+    final walletStatus = walletProvider.status;
     
-    if (wallet == null) {
+    if (walletStatus == WalletStatus.networkError) {
+      return _buildNetworkErrorView();
+    } else if (wallet == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -165,6 +266,73 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
             AppButton(
               text: 'Create Wallet',
               onPressed: () async {
+                // Show initial loading dialog
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext context) {
+                    return const AlertDialog(
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('Preparing authentication...'),
+                        ],
+                      ),
+                    );
+                  },
+                );
+                
+                // First authenticate before creating wallet
+                final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+                final authenticated = await securityProvider.authenticateWithBiometrics(
+                  reason: 'Authenticate to create wallet'
+                );
+                
+                // Close the dialog
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+                
+                if (!authenticated) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Authentication required to create wallet'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                  return;
+                }
+                
+                // Show a more detailed progress dialog
+                if (mounted) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text('Creating Your Wallet'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 24),
+                            const Text('Please wait while we set up your wallet...'),
+                            const SizedBox(height: 16),
+                            LinearProgressIndicator(
+                              backgroundColor: Colors.grey[300],
+                              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                }
+                
                 setState(() {
                   _isLoading = true;
                 });
@@ -173,16 +341,67 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
                   // Using a hardcoded user ID and PIN for now - in a real app, these would come from user input
                   const String userId = 'current_user_id';
                   const String pin = '123456';
+                  
+                  // Call createWallet with await to ensure it completes
                   await walletProvider.createWallet(userId, pin);
-                  _loadWalletData();
+                  
+                  // Close the progress dialog
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                  }
+                  
+                  // Now load wallet data
+                  await _loadWalletData();
+                  
+                  // Force rebuild of UI after wallet creation
+                  if (mounted) {
+                    setState(() {});
+                    
+                    // Update UI to show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Wallet created successfully!'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    
+                    // Force another UI refresh by triggering a rebuild after a short delay
+                    await Future.delayed(const Duration(milliseconds: 500));
+                    setState(() {});
+                  }
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to create wallet: ${e.toString()}')),
-                  );
+                  // Close the progress dialog in case of error
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                    
+                    // Check if this is a network error
+                    final errorMsg = e.toString().toLowerCase();
+                    if (errorMsg.contains('failed to fetch') || 
+                        errorMsg.contains('connection') || 
+                        errorMsg.contains('network') ||
+                        errorMsg.contains('project id')) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Network connection error. Please check your internet connection and try again.'),
+                          backgroundColor: Colors.orange,
+                          duration: Duration(seconds: 5),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to create wallet: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 } finally {
-                  setState(() {
-                    _isLoading = false;
-                  });
+                  if (mounted) {
+                    setState(() {
+                      _isLoading = false;
+                    });
+                  }
                 }
               },
               isFullWidth: false,
@@ -323,16 +542,48 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
           icon: Icons.arrow_downward,
           label: 'Receive',
           color: AppColors.secondary,
-          onTap: () {
-            Navigator.of(context).pushNamed(ReceiveScreen.routeName);
+          onTap: () async {
+            // Authentication for receiving might not be as critical as sending,
+            // but still adding it for consistency in security
+            final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+            final authenticated = await securityProvider.authenticateWithBiometrics(
+              reason: 'Authenticate to view receive address'
+            );
+            
+            if (authenticated && mounted) {
+              Navigator.of(context).pushNamed(ReceiveScreen.routeName);
+            } else if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Authentication required to view receive address'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           },
         ),
         _buildActionButton(
           icon: Icons.history,
           label: 'History',
           color: AppColors.accent,
-          onTap: () {
-            Navigator.of(context).pushNamed(TransactionHistoryScreen.routeName);
+          onTap: () async {
+            // For viewing transaction history, we still require authentication
+            // since transaction history contains sensitive financial information
+            final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+            final authenticated = await securityProvider.authenticateWithBiometrics(
+              reason: 'Authenticate to view transaction history'
+            );
+            
+            if (authenticated && mounted) {
+              Navigator.of(context).pushNamed(TransactionHistoryScreen.routeName);
+            } else if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Authentication required to view transaction history'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           },
         ),
       ],
@@ -556,8 +807,22 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pushNamed(TransactionHistoryScreen.routeName);
+              onPressed: () async {
+                final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+                final authenticated = await securityProvider.authenticateWithBiometrics(
+                  reason: 'Authenticate to view all transactions'
+                );
+                
+                if (authenticated && mounted) {
+                  Navigator.of(context).pushNamed(TransactionHistoryScreen.routeName);
+                } else if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Authentication required to view transactions'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
               child: const Text('View All'),
             ),
@@ -634,6 +899,28 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
       ),
       onTap: () {
         // Navigate to transaction details
+      },
+    );
+  }
+  
+  void _showNetworkErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Network Connection Error'),
+          content: const Text(
+            'Unable to connect to the blockchain network. Please check your internet connection and try again later.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
       },
     );
   }

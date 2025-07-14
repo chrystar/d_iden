@@ -11,7 +11,7 @@ class AppConstants {
   static const String biometricsEnabledKey = 'biometrics_enabled';
   
   // Blockchain Network
-  static const String networkRpcUrl = 'https://polygon-mumbai.infura.io/v3/YOUR_INFURA_KEY'; // Replace with your Infura key
+  static const String networkRpcUrl = 'https://polygon-mumbai.g.alchemy.com/v2/demo'; // Free public RPC for Mumbai
   static const int networkChainId = 80001; // Mumbai testnet
   static const String networkName = 'Polygon Mumbai';
 

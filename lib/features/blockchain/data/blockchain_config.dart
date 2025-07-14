@@ -1,8 +1,8 @@
 class BlockchainConfig {
-  // Ethereum networks
-  static const String mainnetRpcUrl = 'https://mainnet.infura.io/v3/YOUR_INFURA_KEY';
-  static const String sepoliaRpcUrl = 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY';
-  static const String goerliRpcUrl = 'https://goerli.infura.io/v3/YOUR_INFURA_KEY';
+  // Ethereum networks - Use a free public RPC URL for development
+  static const String mainnetRpcUrl = 'https://eth.llamarpc.com';
+  static const String sepoliaRpcUrl = 'https://rpc.sepolia.org';
+  static const String goerliRpcUrl = 'https://eth-goerli.public.blastapi.io';
   
   // Network IDs
   static const int mainnetChainId = 1;

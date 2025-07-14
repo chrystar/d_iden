@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'dart:convert';
 import 'dart:math';
+import 'dart:async';
 import 'package:convert/convert.dart' show hex;
 
 import '../../domain/models/wallet.dart';
@@ -24,7 +25,11 @@ class WalletRepositoryImpl implements WalletRepository {
     required int chainId,
     Web3Client? web3client,
   })  : _chainId = chainId,
-        _web3client = web3client ?? Web3Client(rpcUrl, http.Client());
+        _web3client = web3client ?? Web3Client(
+          rpcUrl, 
+          // Add a timeout for HTTP requests
+          http.Client(),
+        );
 
   @override
   Future<Wallet> createWallet(String userId, String pin) async {
@@ -135,7 +140,15 @@ class WalletRepositoryImpl implements WalletRepository {
       
       return etherBalance;
     } catch (e) {
-      throw Exception('Failed to get wallet balance: ${e.toString()}');
+      final errorMsg = e.toString().toLowerCase();
+      if (errorMsg.contains('failed to fetch') || 
+          errorMsg.contains('connection') || 
+          errorMsg.contains('network') ||
+          errorMsg.contains('project id')) {
+        throw Exception('Network connection error. Please check your internet connection or try again later.');
+      } else {
+        throw Exception('Failed to get wallet balance: ${e.toString()}');
+      }
     }
   }
 
@@ -302,6 +315,21 @@ class WalletRepositoryImpl implements WalletRepository {
       return walletTx;
     } catch (e) {
       throw Exception('Failed to send transaction: ${e.toString()}');
+    }
+  }
+
+  /// Checks if the RPC connection is available
+  /// Returns true if connected, false otherwise
+  Future<bool> checkRpcConnection() async {
+    try {
+      // Try to get the current block number as a simple connectivity test
+      // Set a timeout to avoid hanging if the connection is slow
+      return await Future.any([
+        _web3client.getBlockNumber().then((_) => true),
+        Future.delayed(const Duration(seconds: 5), () => throw TimeoutException('RPC connection timed out')),
+      ]);
+    } catch (e) {
+      return false;
     }
   }
 

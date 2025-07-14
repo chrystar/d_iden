@@ -11,7 +11,7 @@ import '../../domain/models/digital_identity.dart';
 import '../../../../features/blockchain/presentation/providers/blockchain_provider.dart';
 import '../../../../features/blockchain/presentation/screens/did_setup_screen.dart';
 
-class IdentityDetailsScreen extends StatelessWidget {
+class IdentityDetailsScreen extends StatefulWidget {
   static const routeName = '/identity-details';
   
   final DigitalIdentity identity;
@@ -20,6 +20,26 @@ class IdentityDetailsScreen extends StatelessWidget {
     Key? key,
     required this.identity,
   }) : super(key: key);
+
+  @override
+  State<IdentityDetailsScreen> createState() => _IdentityDetailsScreenState();
+}
+
+class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
+  bool _isLoading = true;
+  
+  @override
+  void initState() {
+    super.initState();
+    // Simulate loading data
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+  }
   
   @override
   Widget build(BuildContext context) {

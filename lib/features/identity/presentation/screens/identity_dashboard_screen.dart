@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
+import '../../../../core/widgets/shimmer_loading.dart';
 
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -47,8 +48,15 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
       await identityProvider.loadIdentity(userId);
       // The loadIdentity method already loads credentials
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load identity data: ${e.toString()}')),
+      final errorMsg = e.toString().toLowerCase();
+      final isNetworkError = errorMsg.contains('failed to fetch') || 
+          errorMsg.contains('connection') || 
+          errorMsg.contains('network') ||
+          errorMsg.contains('timeout');
+      
+      _showErrorSnackbar(
+        'Failed to load identity data: ${e.toString()}',
+        isNetworkError: isNetworkError
       );
     } finally {
       setState(() {
@@ -100,8 +108,15 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to check blockchain DID: ${e.toString()}')),
+        final errorMsg = e.toString().toLowerCase();
+        final isNetworkError = errorMsg.contains('failed to fetch') || 
+            errorMsg.contains('connection') || 
+            errorMsg.contains('network') ||
+            errorMsg.contains('timeout');
+            
+        _showErrorSnackbar(
+          'Failed to check blockchain DID: ${e.toString()}',
+          isNetworkError: isNetworkError
         );
       }
     }
@@ -137,9 +152,7 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Authentication error: ${e.toString()}')),
-        );
+        _showErrorSnackbar('Authentication error: ${e.toString()}');
       }
     } finally {
       if (mounted) {
@@ -157,6 +170,7 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Digital Identity'),
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -193,7 +207,7 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildShimmerLoading()
           : _buildIdentityContent(),
     );
   }
@@ -261,8 +275,15 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
                   // Reload identity data
                   await _loadIdentityData();
                 } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to create identity: ${e.toString()}')),
+                  final errorMsg = e.toString().toLowerCase();
+                  final isNetworkError = errorMsg.contains('failed to fetch') || 
+                      errorMsg.contains('connection') || 
+                      errorMsg.contains('network') ||
+                      errorMsg.contains('timeout');
+                      
+                  _showErrorSnackbar(
+                    'Failed to create identity: ${e.toString()}',
+                    isNetworkError: isNetworkError
                   );
                 } finally {
                   setState(() {
@@ -864,5 +885,103 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
     } else {
       return 'Today';
     }
+  }
+  
+  Widget _buildShimmerLoading() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Identity card shimmer
+          ShimmerLoading(
+            isLoading: true,
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: const ShimmerIdentityCard(),
+          ),
+          const SizedBox(height: 24),
+          // Blockchain DID card shimmer
+          ShimmerLoading(
+            isLoading: true,
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: const ShimmerIdentityCard(),
+          ),
+          const SizedBox(height: 24),
+          // Stats shimmer
+          ShimmerLoading(
+            isLoading: true,
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: const ShimmerStats(),
+          ),
+          const SizedBox(height: 24),
+          // Credentials title shimmer
+          Row(
+            children: [
+              Expanded(
+                child: ShimmerLoading(
+                  isLoading: true,
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: const ShimmerBox(height: 30),
+                ),
+              ),
+              const SizedBox(width: 50),
+              ShimmerLoading(
+                isLoading: true,
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: const ShimmerBox(width: 80, height: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Credentials grid shimmer
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 0.9,
+            children: List.generate(
+              4,
+              (_) => ShimmerLoading(
+                isLoading: true,
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: const ShimmerCredentialCard(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showErrorSnackbar(String message, {bool isNetworkError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isNetworkError ? Icons.wifi_off : Icons.error_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isNetworkError ? Colors.orange : Colors.red,
+        duration: const Duration(seconds: 4),
+        action: isNetworkError ? SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: _authenticateUser,
+        ) : null,
+      ),
+    );
   }
 }

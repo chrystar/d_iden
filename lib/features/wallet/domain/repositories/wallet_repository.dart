@@ -37,4 +37,7 @@ abstract class WalletRepository {
     String signature,
     String message
   );
+  
+  /// Checks if the RPC connection is available
+  Future<bool> checkRpcConnection();
 }
