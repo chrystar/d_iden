@@ -10,6 +10,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../domain/models/digital_identity.dart';
 import '../../../../features/blockchain/presentation/providers/blockchain_provider.dart';
 import '../../../../features/blockchain/presentation/screens/did_setup_screen.dart';
+import '../../../../core/widgets/shimmer_loading.dart';
 
 class IdentityDetailsScreen extends StatefulWidget {
   static const routeName = '/identity-details';
@@ -41,6 +42,74 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
     });
   }
   
+  Widget _buildShimmerLoading() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Identity card shimmer
+          ShimmerLoading(
+            isLoading: true,
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: const ShimmerIdentityCard(),
+          ),
+          const SizedBox(height: 24),
+          // QR code shimmer
+          ShimmerLoading(
+            isLoading: true,
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              height: 300,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Title shimmer
+          ShimmerLoading(
+            isLoading: true,
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: const ShimmerBox(width: 150, height: 24),
+          ),
+          const SizedBox(height: 16),
+          // Details shimmer
+          ShimmerLoading(
+            isLoading: true,
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Blockchain status shimmer
+          ShimmerLoading(
+            isLoading: true,
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,44 +117,42 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
         title: const Text('Identity Details'),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FadeInDown(
-                child: _buildIdentityCard(context),
+        child: _isLoading
+            ? _buildShimmerLoading()
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FadeInDown(
+                      child: _buildIdentityCard(context),
+                    ),
+                    const SizedBox(height: 24),
+                    FadeInDown(
+                      delay: const Duration(milliseconds: 200),
+                      child: _buildIdentityQrCode(context),
+                    ),
+                    const SizedBox(height: 24),
+                    FadeInDown(
+                      delay: const Duration(milliseconds: 400),
+                      child: _buildIdentityDetails(context),
+                    ),
+                    const SizedBox(height: 24),
+                    FadeInDown(
+                      delay: const Duration(milliseconds: 500),
+                      child: _buildBlockchainStatus(context),
+                    ),
+                    const SizedBox(height: 32),
+                    FadeInDown(
+                      delay: const Duration(milliseconds: 600),
+                      child: _buildActionButtons(context),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 24),
-              FadeInDown(
-                delay: const Duration(milliseconds: 200),
-                child: _buildIdentityQrCode(context),
-              ),
-              const SizedBox(height: 24),
-              FadeInDown(
-                delay: const Duration(milliseconds: 400),
-                child: _buildIdentityDetails(context),
-              ),
-              const SizedBox(height: 24),
-              FadeInDown(
-                delay: const Duration(milliseconds: 500),
-                child: _buildBlockchainStatus(context),
-              ),
-              const SizedBox(height: 32),
-              FadeInDown(
-                delay: const Duration(milliseconds: 600),
-                child: _buildActionButtons(context),
-              ),
-              const SizedBox(height: 32),
-              FadeInDown(
-                delay: const Duration(milliseconds: 800),
-                child: _buildBlockchainStatus(context),
-              ),
-            ],
-          ),
-        ),
       ),
     );
+         
   }
   
   Widget _buildIdentityCard(BuildContext context) {
@@ -123,7 +190,7 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      identity.isActive ? 'Active since ${_formatDate(identity.created)}' : 'Inactive',
+                      widget.identity.isActive ? 'Active since ${_formatDate(widget.identity.created)}' : 'Inactive',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -147,7 +214,7 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
             children: [
               Expanded(
                 child: Text(
-                  identity.did,
+                  widget.identity.did,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -158,7 +225,7 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
               IconButton(
                 icon: const Icon(Icons.copy, color: Colors.white),
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: identity.did));
+                  Clipboard.setData(ClipboardData(text: widget.identity.did));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('DID copied to clipboard')),
                   );
@@ -194,7 +261,7 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
           const SizedBox(height: 24),
           Center(
             child: QrImageView(
-              data: identity.did,
+              data: widget.identity.did,
               version: QrVersions.auto,
               size: 200.0,
               backgroundColor: Colors.white,
@@ -241,15 +308,15 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
             children: [
               _buildDetailRow(
                 'Created On',
-                _formatDateFull(identity.created),
+                _formatDateFull(widget.identity.created),
                 Icons.calendar_today,
               ),
               const Divider(),
               _buildDetailRow(
                 'Status',
-                identity.isActive ? 'Active' : 'Inactive',
+                widget.identity.isActive ? 'Active' : 'Inactive',
                 Icons.check_circle,
-                valueColor: identity.isActive ? AppColors.success : AppColors.error,
+                valueColor: widget.identity.isActive ? AppColors.success : AppColors.error,
               ),
               const Divider(),
               _buildDetailRow(
@@ -355,7 +422,7 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        identity.isActive
+        widget.identity.isActive
             ? AppButton(
                 text: 'Deactivate Identity',
                 icon: Icons.block,
@@ -387,6 +454,20 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
   
   Widget _buildBlockchainStatus(BuildContext context) {
     final blockchainProvider = Provider.of<BlockchainProvider>(context);
+    
+    // Check for blockchain errors
+    if (blockchainProvider.error != null) {
+      final errorMsg = blockchainProvider.error!.toLowerCase();
+      final isNetworkError = errorMsg.contains('failed to fetch') || 
+          errorMsg.contains('connection') || 
+          errorMsg.contains('network') ||
+          errorMsg.contains('timeout');
+          
+      Future.microtask(() => _showErrorSnackbar(
+        'Blockchain error: ${blockchainProvider.error}',
+        isNetworkError: isNetworkError
+      ));
+    }
     
     return AppCard(
       child: Column(
@@ -528,6 +609,44 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
             child: const Text('Deactivate'),
           ),
         ],
+      ),
+    );
+  }
+  
+  void _showErrorSnackbar(String message, {bool isNetworkError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isNetworkError ? Icons.wifi_off : Icons.error_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isNetworkError ? Colors.orange : Colors.red,
+        duration: const Duration(seconds: 4),
+        action: isNetworkError ? SnackBarAction(
+          label: 'Retry',
+          textColor: Colors.white,
+          onPressed: () {
+            // Retry logic here
+            setState(() {
+              _isLoading = true;
+            });
+            
+            // Simulate loading data
+            Future.delayed(const Duration(milliseconds: 1000), () {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+            });
+          },
+        ) : null,
       ),
     );
   }

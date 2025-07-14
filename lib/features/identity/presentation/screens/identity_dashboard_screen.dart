@@ -333,9 +333,10 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
   Widget _buildIdentityCard(DigitalIdentity identity) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).pushNamed(
-          IdentityDetailsScreen.routeName,
-          arguments: identity,
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => IdentityDetailsScreen(identity: identity),
+          ),
         );
       },
       child: GradientAppCard(
@@ -567,9 +568,11 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
       childAspectRatio: 0.9,
-      children: previewCredentials.map((credential) {
-        return _buildCredentialCard(credential);
-      }).toList(),
+      children: _isLoading 
+          ? List.generate(4, (_) => const ShimmerCredentialCard())
+          : previewCredentials.map((credential) {
+              return _buildCredentialCard(credential);
+            }).toList(),
     );
   }
   
@@ -601,9 +604,10 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
     
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).pushNamed(
-          CredentialDetailsScreen.routeName,
-          arguments: credential,
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => CredentialDetailsScreen(credential: credential),
+          ),
         );
       },
       child: AppCard(
@@ -888,75 +892,186 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
   }
   
   Widget _buildShimmerLoading() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Identity card shimmer
-          ShimmerLoading(
-            isLoading: true,
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: const ShimmerIdentityCard(),
-          ),
-          const SizedBox(height: 24),
-          // Blockchain DID card shimmer
-          ShimmerLoading(
-            isLoading: true,
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: const ShimmerIdentityCard(),
-          ),
-          const SizedBox(height: 24),
-          // Stats shimmer
-          ShimmerLoading(
-            isLoading: true,
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: const ShimmerStats(),
-          ),
-          const SizedBox(height: 24),
-          // Credentials title shimmer
-          Row(
-            children: [
-              Expanded(
-                child: ShimmerLoading(
-                  isLoading: true,
-                  baseColor: Colors.grey[300]!,
-                  highlightColor: Colors.grey[100]!,
-                  child: const ShimmerBox(height: 30),
+    return RefreshIndicator(
+      onRefresh: () async {
+        // Simply simulate a refresh when pulled
+        if (!_isLoading) {
+          setState(() {
+            _isLoading = true;
+          });
+          
+          await Future.delayed(const Duration(milliseconds: 1500));
+          
+          if (mounted) {
+            _authenticateUser();
+          }
+        }
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Identity card shimmer with gradient effect
+            FadeInDown(
+              duration: const Duration(milliseconds: 600),
+              child: ShimmerLoading(
+                isLoading: true,
+                baseColor: AppColors.primary.withOpacity(0.2),
+                highlightColor: AppColors.secondary.withOpacity(0.2),
+                child: Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withOpacity(0.3),
+                        AppColors.secondary.withOpacity(0.3),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: const ShimmerIdentityCard(),
                 ),
               ),
-              const SizedBox(width: 50),
-              ShimmerLoading(
+            ),
+            const SizedBox(height: 24),
+            // Blockchain DID card shimmer
+            FadeInDown(
+              duration: const Duration(milliseconds: 600),
+              delay: const Duration(milliseconds: 100),
+              child: ShimmerLoading(
                 isLoading: true,
                 baseColor: Colors.grey[300]!,
                 highlightColor: Colors.grey[100]!,
-                child: const ShimmerBox(width: 80, height: 20),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          // Credentials grid shimmer
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 0.9,
-            children: List.generate(
-              4,
-              (_) => ShimmerLoading(
-                isLoading: true,
-                baseColor: Colors.grey[300]!,
-                highlightColor: Colors.grey[100]!,
-                child: const ShimmerCredentialCard(),
+                child: Container(
+                  height: 120,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.1),
+                        spreadRadius: 1,
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const ShimmerBox(
+                            width: 40,
+                            height: 40,
+                            borderRadius: 8,
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              ShimmerBox(
+                                width: 120,
+                                height: 16,
+                              ),
+                              SizedBox(height: 8),
+                              ShimmerBox(
+                                width: 80,
+                                height: 12,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const ShimmerBox(
+                        width: double.infinity,
+                        height: 36,
+                        borderRadius: 18,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            // Stats shimmer
+            FadeInDown(
+              duration: const Duration(milliseconds: 600),
+              delay: const Duration(milliseconds: 200),
+              child: ShimmerLoading(
+                isLoading: true,
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: const ShimmerStats(),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Credentials title shimmer
+            FadeInDown(
+              duration: const Duration(milliseconds: 600),
+              delay: const Duration(milliseconds: 300),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ShimmerLoading(
+                    isLoading: true,
+                    baseColor: Colors.grey[300]!,
+                    highlightColor: Colors.grey[100]!,
+                    child: const ShimmerBox(width: 150, height: 24),
+                  ),
+                  ShimmerLoading(
+                    isLoading: true,
+                    baseColor: Colors.grey[300]!,
+                    highlightColor: Colors.grey[100]!,
+                    child: const ShimmerBox(width: 80, height: 20),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Credentials grid shimmer with staggered animation
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 0.9,
+              children: List.generate(
+                4,
+                (index) => FadeInDown(
+                  duration: const Duration(milliseconds: 600),
+                  delay: Duration(milliseconds: 400 + (index * 100)),
+                  child: ShimmerLoading(
+                    isLoading: true,
+                    baseColor: Colors.grey[300]!,
+                    highlightColor: Colors.grey[100]!,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.1),
+                            spreadRadius: 1,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const ShimmerCredentialCard(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
