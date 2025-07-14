@@ -513,34 +513,37 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: AppButton(
-                text: 'Export Identity',
-                icon: Icons.download,
-                onPressed: () {
-                  // Implement identity export functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Export functionality coming soon')),
-                  );
-                },
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 200,
+                child: AppButton(
+                  text: 'Export Identity',
+                  icon: Icons.download,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Export functionality coming soon')),
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: AppButton(
-                text: 'Share Identity',
-                icon: Icons.share,
-                onPressed: () {
-                  // Implement identity sharing functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Share functionality coming soon')),
-                  );
-                },
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 200,
+                child: AppButton(
+                  text: 'Share Identity',
+                  icon: Icons.share,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Share functionality coming soon')),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         widget.identity.isActive
@@ -654,7 +657,7 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              blockchainProvider.did!.did,
+                              blockchainProvider.did != null ? blockchainProvider.did!.did : 'No DID available',
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontFamily: 'monospace',
@@ -662,20 +665,21 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.copy, size: 20),
-                            onPressed: () {
-                              Clipboard.setData(
-                                ClipboardData(text: blockchainProvider.did!.did),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('DID copied to clipboard'),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
-                            },
-                          ),
+                          if (blockchainProvider.did != null)
+                            IconButton(
+                              icon: const Icon(Icons.copy, size: 20),
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: blockchainProvider.did!.did),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('DID copied to clipboard'),
+                                    duration: Duration(seconds: 1),
+                                  ),
+                                );
+                              },
+                            ),
                         ],
                       ),
                     if (blockchainProvider.did == null)
