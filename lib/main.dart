@@ -17,6 +17,7 @@ import 'features/settings/presentation/providers/settings_provider.dart';
 import 'features/blockchain/presentation/providers/blockchain_provider.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/home/presentation/screens/home_screen.dart';
+import 'features/identity/presentation/screens/credential_request_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +70,7 @@ class MyApp extends StatelessWidget {
           home: const SplashScreen(),
           routes: {
             '/home': (context) => const HomeScreen(),
+            '/credential-request': (context) => const CredentialRequestScreen(),
           },
         ),
       ),

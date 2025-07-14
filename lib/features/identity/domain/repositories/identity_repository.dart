@@ -30,4 +30,13 @@ abstract class IdentityRepository {
     String proof,
     List<String> requiredCredentialTypes,
   );
+  
+  // Credential Request
+  Future<VerifiableCredential?> requestCredential({
+    required String holderDid,
+    required String issuerDid,
+    required String issuerName,
+    required String credentialType,
+    required Map<String, dynamic> credentialSubject,
+  });
 }

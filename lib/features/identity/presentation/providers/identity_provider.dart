@@ -78,4 +78,48 @@ class IdentityProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
   }
+  
+  // Request a new verifiable credential
+  Future<VerifiableCredential?> requestCredential({
+    required String issuerDid,
+    required String issuerName,
+    required String credentialType,
+    required Map<String, dynamic> credentialSubject
+  }) async {
+    _status = IdentityStatus.loading;
+    _error = null;
+    notifyListeners();
+    
+    try {
+      if (_identityRepository != null && _identity != null) {
+        // In a real implementation, this would make an API call to the issuer
+        // For now, we'll create a simulated credential
+        final credential = await _identityRepository.requestCredential(
+          holderDid: _identity!.did,
+          issuerDid: issuerDid,
+          issuerName: issuerName,
+          credentialType: credentialType,
+          credentialSubject: credentialSubject
+        );
+        
+        // Add the new credential to our list
+        if (credential != null) {
+          _credentials.add(credential);
+        }
+        
+        _status = IdentityStatus.loaded;
+        notifyListeners();
+        return credential;
+      }
+      
+      _status = IdentityStatus.loaded;
+      notifyListeners();
+      return null;
+    } catch (e) {
+      _error = e.toString();
+      _status = IdentityStatus.error;
+      notifyListeners();
+      return null;
+    }
+  }
 }

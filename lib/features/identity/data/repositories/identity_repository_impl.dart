@@ -529,4 +529,82 @@ class IdentityRepositoryImpl implements IdentityRepository {
       return null;
     }
   }
+  
+  @override
+  Future<VerifiableCredential?> requestCredential({
+    required String holderDid,
+    required String issuerDid,
+    required String issuerName,
+    required String credentialType,
+    required Map<String, dynamic> credentialSubject,
+  }) async {
+    try {
+      // In a real implementation, this would send a request to an issuer's API
+      // and wait for their response
+      
+      // For our demo implementation, we'll simulate a successful response by creating
+      // a credential directly. In real-world, this would be signed by the issuer.
+      
+      // First, save the issuer in our issuer map if it's not already there
+      await _saveIssuerName(issuerDid, issuerName);
+      
+      // Create a credential with the requested type and data
+      CredentialType type;
+      switch (credentialType.toLowerCase()) {
+        case 'education':
+          type = CredentialType.education;
+          break;
+        case 'employment':
+          type = CredentialType.employment;
+          break;
+        case 'identification':
+          type = CredentialType.identification;
+          break;
+        case 'certificate':
+          type = CredentialType.certificate;
+          break;
+        case 'membership':
+          type = CredentialType.membership;
+          break;
+        case 'license':
+          type = CredentialType.license;
+          break;
+        case 'personal info':
+        case 'personalinfo':
+          type = CredentialType.personalInfo;
+          break;
+        default:
+          type = CredentialType.custom;
+      }
+      
+      // Issue the credential (in a real system, this would be done by the issuer)
+      return await issueCredential(
+        issuerDid,
+        holderDid,
+        'Credential from $issuerName',
+        type,
+        credentialSubject,
+        DateTime.now().add(const Duration(days: 365)), // Valid for 1 year
+      );
+    } catch (e) {
+      throw Exception('Failed to request credential: ${e.toString()}');
+    }
+  }
+  
+  Future<void> _saveIssuerName(String issuerDid, String issuerName) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final issuerMapJson = prefs.getString(_issuerMapStorageKey);
+      
+      Map<String, dynamic> issuerMap = {};
+      if (issuerMapJson != null) {
+        issuerMap = json.decode(issuerMapJson);
+      }
+      
+      issuerMap[issuerDid] = issuerName;
+      await prefs.setString(_issuerMapStorageKey, json.encode(issuerMap));
+    } catch (e) {
+      throw Exception('Failed to save issuer name: ${e.toString()}');
+    }
+  }
 }

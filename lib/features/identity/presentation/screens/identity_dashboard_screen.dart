@@ -1,3 +1,4 @@
+import 'package:d_iden/features/identity/presentation/screens/credential_request_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
@@ -547,6 +548,11 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
             text: 'Request Credential',
             onPressed: () {
               // Navigate to credential request flow
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CredentialRequestScreen(),
+                ),
+              );
             },
             isFullWidth: false,
           ),

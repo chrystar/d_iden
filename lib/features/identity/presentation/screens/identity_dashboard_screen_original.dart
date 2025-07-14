@@ -14,6 +14,7 @@ import 'identity_details_screen.dart';
 import 'credential_details_screen.dart';
 import '../../../../features/blockchain/presentation/providers/blockchain_provider.dart';
 import '../../../../features/blockchain/presentation/screens/did_setup_screen.dart';
+import 'credential_request_screen.dart';
 
 class IdentityDashboardScreen extends StatefulWidget {
   static const routeName = '/identity-dashboard';
@@ -559,6 +560,11 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
             text: 'Request Credential',
             onPressed: () {
               // Navigate to credential request flow
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CredentialRequestScreen(),
+                ),
+              );
             },
             isFullWidth: false,
           ),
