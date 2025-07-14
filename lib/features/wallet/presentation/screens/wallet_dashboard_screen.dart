@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'dart:convert';
 
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -814,76 +810,6 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
         );
       },
     );
-  }
-
-  Future<void> _exportWalletBackup() async {
-    final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    // Authenticate
-    final authenticated = await securityProvider.authenticateWithBiometrics(reason: 'Authenticate to export your wallet backup');
-    if (!authenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Authentication required to export wallet backup')),
-      );
-      return;
-    }
-    final wallet = walletProvider.wallet;
-    if (wallet == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No wallet to export')),
-      );
-      return;
-    }
-    // Serialize wallet data
-    final walletJson = wallet.toJson();
-    final walletString = jsonEncode(walletJson);
-    // Encrypt wallet data
-    final encrypted = await securityProvider.encryptData(walletString);
-    // Save to file
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/wallet_backup.didbkp');
-    await file.writeAsString(encrypted);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Wallet backup exported to ${file.path}')),
-    );
-  }
-
-  Future<void> _importWalletBackup() async {
-    final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
-    final walletProvider = Provider.of<WalletProvider>(context, listen: false);
-    // Authenticate
-    final authenticated = await securityProvider.authenticateWithBiometrics(reason: 'Authenticate to import a wallet backup');
-    if (!authenticated) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Authentication required to import wallet backup')),
-      );
-      return;
-    }
-    // Pick file
-    final result = await FilePicker.platform.pickFiles(type: FileType.any);
-    if (result == null || result.files.single.path == null) {
-      return;
-    }
-    final file = File(result.files.single.path!);
-    final encrypted = await file.readAsString();
-    // Decrypt
-    String decrypted;
-    try {
-      decrypted = await securityProvider.decryptData(encrypted);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to decrypt backup: $e')),
-      );
-      return;
-    }
-    // Parse wallet
-    final walletJson = jsonDecode(decrypted);
-    // Restore wallet (this may need to call a provider/repository method)
-    await walletProvider.importWalletFromJson(walletJson);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Wallet backup imported successfully')),
-    );
-    await _loadWalletData();
   }
 }
 
