@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/models/digital_identity.dart';
+import '../../../../features/blockchain/presentation/providers/blockchain_provider.dart';
+import '../../../../features/blockchain/presentation/screens/did_setup_screen.dart';
 
 class IdentityDetailsScreen extends StatelessWidget {
   static const routeName = '/identity-details';
@@ -43,10 +46,20 @@ class IdentityDetailsScreen extends StatelessWidget {
                 delay: const Duration(milliseconds: 400),
                 child: _buildIdentityDetails(context),
               ),
+              const SizedBox(height: 24),
+              FadeInDown(
+                delay: const Duration(milliseconds: 500),
+                child: _buildBlockchainStatus(context),
+              ),
               const SizedBox(height: 32),
               FadeInDown(
                 delay: const Duration(milliseconds: 600),
                 child: _buildActionButtons(context),
+              ),
+              const SizedBox(height: 32),
+              FadeInDown(
+                delay: const Duration(milliseconds: 800),
+                child: _buildBlockchainStatus(context),
               ),
             ],
           ),
@@ -349,6 +362,122 @@ class IdentityDetailsScreen extends StatelessWidget {
                 ),
               ),
       ],
+    );
+  }
+  
+  Widget _buildBlockchainStatus(BuildContext context) {
+    final blockchainProvider = Provider.of<BlockchainProvider>(context);
+    
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Blockchain Integration',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: blockchainProvider.did != null
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.amber.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  blockchainProvider.did != null
+                      ? Icons.check_circle
+                      : Icons.pending,
+                  color: blockchainProvider.did != null
+                      ? Colors.green
+                      : Colors.amber,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      blockchainProvider.did != null
+                          ? 'Blockchain DID Connected'
+                          : 'Blockchain DID Not Connected',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      blockchainProvider.did != null
+                          ? 'Your digital identity is linked to a blockchain-based DID'
+                          : 'Your digital identity is not yet linked to a blockchain DID',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (blockchainProvider.did != null)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              blockchainProvider.did!.did,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontFamily: 'monospace',
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 20),
+                            onPressed: () {
+                              Clipboard.setData(
+                                ClipboardData(text: blockchainProvider.did!.did),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('DID copied to clipboard'),
+                                  duration: Duration(seconds: 1),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    if (blockchainProvider.did == null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: AppButton(
+                          text: 'Create Blockchain DID',
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const DIDSetupScreen(),
+                              ),
+                            );
+                          },
+                          isFullWidth: false,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
   

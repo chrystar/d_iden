@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "614272235126",
+    "project_id": "poultriz-invext",
+    "storage_bucket": "poultriz-invext.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:614272235126:android:22085d838fff274f3cd157",
+        "android_client_info": {
+          "package_name": "com.example.d_iden"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8E3JzoGONuAP9P9uCqa3lEj81KIpBEvE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:614272235126:android:ed102606ad6643c73cd157",
+        "android_client_info": {
+          "package_name": "com.example.poultriz"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8E3JzoGONuAP9P9uCqa3lEj81KIpBEvE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

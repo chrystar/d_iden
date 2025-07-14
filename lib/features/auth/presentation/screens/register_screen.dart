@@ -47,6 +47,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final password = _passwordController.text.trim();
 
       await context.read<AuthProvider>().signUp(email, password);
+      
+      // Navigate to home screen if registration was successful
+      if (context.read<AuthProvider>().isAuthenticated && mounted) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
     }
   }
 

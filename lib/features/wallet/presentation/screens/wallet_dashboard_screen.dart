@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/security_provider.dart';
 import '../../domain/models/wallet.dart';
 import '../../domain/models/wallet_transaction.dart';
 import '../providers/wallet_provider.dart';
@@ -25,13 +26,51 @@ class WalletDashboardScreen extends StatefulWidget {
 class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
   bool _isLoading = false;
   
+  bool _authenticated = false;
+  
   @override
   void initState() {
     super.initState();
-    _loadWalletData();
+    _authenticateAndLoadWallet();
+  }
+  
+  Future<void> _authenticateAndLoadWallet() async {
+    final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+    
+    // Authenticate user with biometrics
+    final authenticated = await securityProvider.authenticateWithBiometrics(
+      reason: 'Authenticate to access your wallet'
+    );
+    
+    if (authenticated) {
+      setState(() {
+        _authenticated = true;
+      });
+      _loadWalletData();
+    } else {
+      // If authentication fails, we'll show a message and not load the wallet data
+      setState(() {
+        _authenticated = false;
+        _isLoading = false;
+      });
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication failed. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
   
   Future<void> _loadWalletData() async {
+    if (!_authenticated) {
+      return;
+    }
+    
     setState(() {
       _isLoading = true;
     });
@@ -42,9 +81,11 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
       await Provider.of<WalletProvider>(context, listen: false).loadWallet(userId);
       await Provider.of<WalletProvider>(context, listen: false).loadTransactions();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load wallet: ${e.toString()}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load wallet: ${e.toString()}')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -60,16 +101,55 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadWalletData,
+            onPressed: _authenticateAndLoadWallet,
+          ),
+          IconButton(
+            icon: const Icon(Icons.fingerprint),
+            onPressed: () => _authenticateAndLoadWallet(),
+            tooltip: 'Authenticate again',
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _buildWalletContent(),
+          : _authenticated
+              ? _buildWalletContent()
+              : _buildAuthenticationRequired(),
     );
   }
   
+  Widget _buildAuthenticationRequired() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.lock_outline,
+            size: 64,
+            color: AppColors.primary,
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Authentication Required',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Please authenticate to access your wallet',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          AppButton(
+            text: 'Authenticate',
+            onPressed: _authenticateAndLoadWallet,
+            isFullWidth: false,
+            icon: Icons.fingerprint,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildWalletContent() {
     final walletProvider = Provider.of<WalletProvider>(context);
     final wallet = walletProvider.wallet;
@@ -220,8 +300,23 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
           icon: Icons.arrow_upward,
           label: 'Send',
           color: AppColors.primary,
-          onTap: () {
-            Navigator.of(context).pushNamed(SendTransactionScreen.routeName);
+          onTap: () async {
+            // Require authentication again for sending money (additional security)
+            final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+            final authenticated = await securityProvider.authenticateWithBiometrics(
+              reason: 'Authenticate to send funds'
+            );
+            
+            if (authenticated && mounted) {
+              Navigator.of(context).pushNamed(SendTransactionScreen.routeName);
+            } else if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Authentication required to send funds'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
           },
         ),
         _buildActionButton(

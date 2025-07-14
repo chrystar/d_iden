@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'welcome_screen.dart';
 
@@ -16,11 +18,18 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     // Navigate to the next screen after a delay
     Future.delayed(const Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => const WelcomeScreen(),
-        ),
-      );
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Check if user is already logged in
+      if (authProvider.isAuthenticated) {
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => const WelcomeScreen(),
+          ),
+        );
+      }
     });
   }
 

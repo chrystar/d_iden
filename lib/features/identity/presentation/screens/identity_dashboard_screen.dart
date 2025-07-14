@@ -5,11 +5,14 @@ import 'package:animate_do/animate_do.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/providers/security_provider.dart';
 import '../../domain/models/digital_identity.dart';
 import '../../domain/models/verifiable_credential.dart';
 import '../providers/identity_provider.dart';
 import 'identity_details_screen.dart';
 import 'credential_details_screen.dart';
+import '../../../../features/blockchain/presentation/providers/blockchain_provider.dart';
+import '../../../../features/blockchain/presentation/screens/did_setup_screen.dart';
 
 class IdentityDashboardScreen extends StatefulWidget {
   static const routeName = '/identity-dashboard';
@@ -22,11 +25,12 @@ class IdentityDashboardScreen extends StatefulWidget {
 
 class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
   bool _isLoading = false;
+  bool _isAuthenticated = false;
   
   @override
   void initState() {
     super.initState();
-    _loadIdentityData();
+    _authenticateUser();
   }
   
   Future<void> _loadIdentityData() async {
@@ -53,16 +57,139 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
     }
   }
   
+  Future<void> _checkBlockchainDID() async {
+    try {
+      final blockchainProvider = Provider.of<BlockchainProvider>(context, listen: false);
+      final didExists = await blockchainProvider.hasExistingDID();
+      
+      if (!didExists && mounted) {
+        // Wait a bit to avoid showing dialog during loading state
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (!mounted) return;
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Blockchain Identity'),
+            content: const Text(
+              'You don\'t have a blockchain-based decentralized identifier (DID) yet. '
+              'A DID will allow you to verify your identity on the blockchain and '
+              'interact with decentralized applications securely.'
+            ),
+            actions: [
+              TextButton(
+                child: const Text('Later'),
+                onPressed: () => Navigator.of(ctx).pop(),
+              ),
+              ElevatedButton(
+                child: const Text('Create DID'),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const DIDSetupScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to check blockchain DID: ${e.toString()}')),
+        );
+      }
+    }
+  }
+  
+  Future<void> _authenticateUser() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+      
+      // Authenticate with biometrics if available and enabled
+      _isAuthenticated = await securityProvider.authenticateWithBiometrics(
+        reason: 'Authenticate to access your identity dashboard'
+      );
+      
+      if (_isAuthenticated) {
+        // Load data after successful authentication
+        await _loadIdentityData();
+        await _checkBlockchainDID();
+      } else {
+        // Handle failed authentication
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Authentication failed. Some features may be restricted.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Authentication error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+  
   @override
   Widget build(BuildContext context) {
+    final securityProvider = Provider.of<SecurityProvider>(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Digital Identity'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadIdentityData,
+            onPressed: _isAuthenticated ? _loadIdentityData : _authenticateUser,
           ),
+          if (securityProvider.biometricsAvailable)
+            IconButton(
+              icon: Icon(
+                securityProvider.biometricsEnabled 
+                    ? Icons.fingerprint 
+                    : Icons.fingerprint_outlined,
+                color: securityProvider.biometricsEnabled
+                    ? Colors.green
+                    : null,
+              ),
+              tooltip: securityProvider.biometricsEnabled 
+                  ? 'Biometric authentication enabled' 
+                  : 'Enable biometric authentication',
+              onPressed: () async {
+                final newValue = !securityProvider.biometricsEnabled;
+                await securityProvider.setBiometricsEnabled(newValue);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      newValue
+                          ? 'Biometric authentication enabled'
+                          : 'Biometric authentication disabled'
+                    ),
+                    backgroundColor: newValue ? Colors.green : Colors.orange,
+                  ),
+                );
+              },
+            ),
         ],
       ),
       body: _isLoading
@@ -91,10 +218,48 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
                 });
                 
                 try {
+                  // Authenticate user first
+                  final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
+                  
+                  // If biometrics is enabled, require authentication before creating identity
+                  if (securityProvider.biometricsEnabled) {
+                    final authenticated = await securityProvider.authenticateWithBiometrics(
+                      reason: 'Authenticate to create your digital identity'
+                    );
+                    
+                    if (!authenticated) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Authentication failed. Identity creation cancelled.'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      setState(() {
+                        _isLoading = false;
+                      });
+                      return;
+                    }
+                  }
+                  
                   // Get user ID from authentication system
-                  final userId = "currentUserId"; // Placeholder - replace with actual user ID
+                  final userId = "current_user_id"; // Use the same ID as in loadIdentityData
+                  
+                  // Create identity
                   await identityProvider.createIdentity(userId);
-                  _loadIdentityData();
+                  
+                  // Set authentication status to true after successful creation
+                  _isAuthenticated = true;
+                  
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Digital identity created successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  
+                  // Reload identity data
+                  await _loadIdentityData();
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Failed to create identity: ${e.toString()}')),
@@ -125,7 +290,12 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
             ),
             const SizedBox(height: 24),
             FadeInDown(
-              delay: const Duration(milliseconds: 300),
+              delay: const Duration(milliseconds: 200),
+              child: _buildBlockchainDIDCard(),
+            ),
+            const SizedBox(height: 24),
+            FadeInDown(
+              delay: const Duration(milliseconds: 400),
               child: _buildCredentialStats(credentials),
             ),
             const SizedBox(height: 24),
@@ -498,6 +668,154 @@ class _IdentityDashboardScreenState extends State<IdentityDashboardScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+  
+  Widget _buildBlockchainDIDCard() {
+    final blockchainProvider = Provider.of<BlockchainProvider>(context);
+    
+    if (blockchainProvider.did == null) {
+      return AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.link_off,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Blockchain Identity',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: const Text(
+                    'Not Linked',
+                    style: TextStyle(
+                      color: Colors.amber,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'You haven\'t created a blockchain DID yet',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 12),
+            AppButton(
+              text: 'Create Blockchain DID',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const DIDSetupScreen(),
+                  ),
+                );
+              },
+              isFullWidth: false,
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.verified_user,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Blockchain Identity',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: const Text(
+                  'Active',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _shortenDid(blockchainProvider.did!.did),
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(
+                Icons.verified,
+                size: 16,
+                color: Colors.green,
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                'Ethereum blockchain verified',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
