@@ -134,6 +134,23 @@ class FirebaseAuthDataSource {
     await user.updatePassword(newPassword);
   }
 
+  Future<void> updateEmail({required String newEmail, required String currentPassword}) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('No user signed in or user has no email');
+    }
+    // Re-authenticate user before changing email
+    AuthCredential credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
+    await user.updateEmail(newEmail);
+    await _firestore.collection('users').doc(user.uid).update({
+      'email': newEmail,
+    });
+  }
+
   Future<void> deleteAccount(String password) async {
     final user = _firebaseAuth.currentUser;
     if (user == null || user.email == null) {

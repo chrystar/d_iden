@@ -13,6 +13,7 @@ import '../providers/wallet_provider.dart';
 import 'transaction_history_screen.dart';
 import 'send_transaction_screen.dart';
 import 'receive_screen.dart';
+import '../../../../../features/blockchain/presentation/screens/wallet_setup_screen.dart';
 
 class WalletDashboardScreen extends StatefulWidget {
   static const routeName = '/wallet-dashboard';
@@ -266,142 +267,13 @@ class _WalletDashboardScreenState extends State<WalletDashboardScreen> {
             AppButton(
               text: 'Create Wallet',
               onPressed: () async {
-                // Show initial loading dialog
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (BuildContext context) {
-                    return const AlertDialog(
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('Preparing authentication...'),
-                        ],
-                      ),
-                    );
-                  },
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const WalletSetupScreen(),
+                  ),
                 );
-                
-                // First authenticate before creating wallet
-                final securityProvider = Provider.of<SecurityProvider>(context, listen: false);
-                final authenticated = await securityProvider.authenticateWithBiometrics(
-                  reason: 'Authenticate to create wallet'
-                );
-                
-                // Close the dialog
-                if (mounted) {
-                  Navigator.of(context).pop();
-                }
-                
-                if (!authenticated) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Authentication required to create wallet'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                  return;
-                }
-                
-                // Show a more detailed progress dialog
-                if (mounted) {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (BuildContext context) {
-                      return AlertDialog(
-                        title: const Text('Creating Your Wallet'),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const CircularProgressIndicator(),
-                            const SizedBox(height: 24),
-                            const Text('Please wait while we set up your wallet...'),
-                            const SizedBox(height: 16),
-                            LinearProgressIndicator(
-                              backgroundColor: Colors.grey[300],
-                              valueColor: AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                }
-                
-                setState(() {
-                  _isLoading = true;
-                });
-                
-                try {
-                  // Using a hardcoded user ID and PIN for now - in a real app, these would come from user input
-                  const String userId = 'current_user_id';
-                  const String pin = '123456';
-                  
-                  // Call createWallet with await to ensure it completes
-                  await walletProvider.createWallet(userId, pin);
-                  
-                  // Close the progress dialog
-                  if (mounted) {
-                    Navigator.of(context).pop();
-                  }
-                  
-                  // Now load wallet data
+                if (result == true) {
                   await _loadWalletData();
-                  
-                  // Force rebuild of UI after wallet creation
-                  if (mounted) {
-                    setState(() {});
-                    
-                    // Update UI to show success message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Wallet created successfully!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                    
-                    // Force another UI refresh by triggering a rebuild after a short delay
-                    await Future.delayed(const Duration(milliseconds: 500));
-                    setState(() {});
-                  }
-                } catch (e) {
-                  // Close the progress dialog in case of error
-                  if (mounted) {
-                    Navigator.of(context).pop();
-                    
-                    // Check if this is a network error
-                    final errorMsg = e.toString().toLowerCase();
-                    if (errorMsg.contains('failed to fetch') || 
-                        errorMsg.contains('connection') || 
-                        errorMsg.contains('network') ||
-                        errorMsg.contains('project id')) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Network connection error. Please check your internet connection and try again.'),
-                          backgroundColor: Colors.orange,
-                          duration: Duration(seconds: 5),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to create wallet: ${e.toString()}'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
-                  }
-                } finally {
-                  if (mounted) {
-                    setState(() {
-                      _isLoading = false;
-                    });
-                  }
                 }
               },
               isFullWidth: false,

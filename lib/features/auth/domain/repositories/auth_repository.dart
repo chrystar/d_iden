@@ -10,5 +10,6 @@ abstract class AuthRepository {
   Future<void> verifyEmail();
   Future<void> updateProfile({String? displayName, String? photoUrl});
   Future<void> updatePassword(String currentPassword, String newPassword);
+  Future<void> updateEmail({required String newEmail, required String currentPassword});
   Future<void> deleteAccount(String password);
 }

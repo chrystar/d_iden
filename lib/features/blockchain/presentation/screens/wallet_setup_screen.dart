@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../providers/blockchain_provider.dart';
 import '../../../../core/constants/app_colors.dart';
+import 'package:d_iden/features/auth/presentation/providers/auth_provider.dart';
+import 'package:d_iden/features/wallet/presentation/providers/wallet_provider.dart';
 
 class WalletSetupScreen extends StatefulWidget {
   const WalletSetupScreen({Key? key}) : super(key: key);
@@ -14,6 +16,7 @@ class WalletSetupScreen extends StatefulWidget {
 class _WalletSetupScreenState extends State<WalletSetupScreen> {
   final _mnemonicController = TextEditingController();
   final _privateKeyController = TextEditingController();
+  final _pinController = TextEditingController();
   String _selectedTab = 'create';
   bool _isLoading = false;
 
@@ -21,6 +24,7 @@ class _WalletSetupScreenState extends State<WalletSetupScreen> {
   void dispose() {
     _mnemonicController.dispose();
     _privateKeyController.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
@@ -136,6 +140,17 @@ class _WalletSetupScreenState extends State<WalletSetupScreen> {
           const Text(
             'This will generate a new wallet with a secure recovery phrase. Make sure to back up your recovery phrase in a safe place.',
             style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _pinController,
+            decoration: const InputDecoration(
+              labelText: 'Set a 6-digit PIN',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            obscureText: true,
           ),
           const SizedBox(height: 24),
           ElevatedButton(
@@ -261,12 +276,26 @@ class _WalletSetupScreenState extends State<WalletSetupScreen> {
   }
 
   Future<void> _createWallet(BlockchainProvider provider) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.user;
+    final pin = _pinController.text.trim();
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not authenticated.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    if (pin.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a 6-digit PIN.'), backgroundColor: Colors.red),
+      );
+      return;
+    }
     setState(() {
       _isLoading = true;
     });
-    
     try {
-      await provider.createWallet();
+      await Provider.of<WalletProvider>(context, listen: false).createWallet(user.id, pin);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -280,7 +309,7 @@ class _WalletSetupScreenState extends State<WalletSetupScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating wallet: ${e.toString()}'),
+            content: Text('Error creating wallet:  e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );

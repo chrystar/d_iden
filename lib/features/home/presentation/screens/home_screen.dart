@@ -9,6 +9,7 @@ import 'package:d_iden/features/settings/presentation/providers/settings_provide
 import 'package:d_iden/features/blockchain/presentation/providers/blockchain_provider.dart';
 import 'package:d_iden/features/blockchain/presentation/screens/wallet_setup_screen.dart';
 import 'package:d_iden/features/blockchain/presentation/screens/did_setup_screen.dart';
+import 'package:d_iden/features/account/presentation/screens/account_management_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -193,12 +194,9 @@ class _SettingsPage extends StatelessWidget {
                 'View and manage your account details',
                 Icons.account_circle_outlined,
                 () {
-                  // This would navigate to an account page in a real app
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Account management will be available in future updates'),
-                      duration: Duration(seconds: 2),
-                    ),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AccountManagementScreen()),
                   );
                 },
               ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../providers/settings_provider.dart';
+import 'package:d_iden/features/wallet_and_did/presentation/wallet_and_did_management_screen.dart';
 
 class AppSettingsScreen extends StatelessWidget {
   const AppSettingsScreen({Key? key}) : super(key: key);
@@ -32,6 +33,18 @@ class AppSettingsScreen extends StatelessWidget {
                 _buildSectionHeader(context, 'About'),
                 _buildAboutTile(context),
                 _buildVersionTile(context),
+                _buildSettingCard(
+                  context,
+                  'Wallet & DID Management',
+                  'View and manage your blockchain wallet and DID',
+                  Icons.account_balance_wallet,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const WalletAndDIDManagementScreen()),
+                    );
+                  },
+                ),
                 const SizedBox(height: 32),
               ],
             ),
@@ -158,6 +171,21 @@ class AppSettingsScreen extends StatelessWidget {
         title: Text('App Version'),
         subtitle: Text('1.0.0'),
         leading: Icon(Icons.engineering),
+      ),
+    );
+  }
+
+  Widget _buildSettingCard(BuildContext context, String title, String subtitle, IconData icon, VoidCallback onTap) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        title: Text(title),
+        subtitle: Text(subtitle),
+        leading: Icon(icon),
+        onTap: onTap,
       ),
     );
   }

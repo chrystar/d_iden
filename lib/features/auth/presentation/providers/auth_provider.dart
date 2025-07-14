@@ -188,6 +188,22 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
   
+  Future<void> updateEmail({required String newEmail, required String currentPassword}) async {
+    if (_user == null) return;
+    _status = AuthStatus.loading;
+    _error = null;
+    notifyListeners();
+    try {
+      await _authRepository.updateEmail(newEmail: newEmail, currentPassword: currentPassword);
+      _user = await _authRepository.getCurrentUser();
+      _status = AuthStatus.authenticated;
+    } catch (e) {
+      _error = e.toString();
+      _status = AuthStatus.error;
+    }
+    notifyListeners();
+  }
+  
   // Reset error state
   void resetError() {
     _error = null;
