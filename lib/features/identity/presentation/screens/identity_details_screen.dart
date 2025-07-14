@@ -48,60 +48,181 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Identity card shimmer
-          ShimmerLoading(
-            isLoading: true,
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: const ShimmerIdentityCard(),
-          ),
-          const SizedBox(height: 24),
-          // QR code shimmer
-          ShimmerLoading(
-            isLoading: true,
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: Container(
-              height: 300,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.white,
+          // Identity card shimmer with animation
+          FadeInDown(
+            duration: const Duration(milliseconds: 600),
+            child: ShimmerLoading(
+              isLoading: true,
+              baseColor: AppColors.primary.withOpacity(0.2),
+              highlightColor: AppColors.secondary.withOpacity(0.2),
+              period: const Duration(milliseconds: 1800),
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.3),
+                      AppColors.secondary.withOpacity(0.3),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const ShimmerIdentityCard(),
               ),
             ),
           ),
           const SizedBox(height: 24),
-          // Title shimmer
-          ShimmerLoading(
-            isLoading: true,
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: const ShimmerBox(width: 150, height: 24),
+          // QR code shimmer with animation
+          FadeInDown(
+            duration: const Duration(milliseconds: 600),
+            delay: const Duration(milliseconds: 100),
+            child: ShimmerLoading(
+              isLoading: true,
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                height: 300,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    ShimmerBox(
+                      width: 220,
+                      height: 220,
+                      borderRadius: 8,
+                    ),
+                    SizedBox(height: 16),
+                    ShimmerBox(
+                      width: 180,
+                      height: 20,
+                      borderRadius: 4,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Title shimmer with animation
+          FadeInDown(
+            duration: const Duration(milliseconds: 600),
+            delay: const Duration(milliseconds: 200),
+            child: ShimmerLoading(
+              isLoading: true,
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: const ShimmerBox(width: 150, height: 24, borderRadius: 4),
+            ),
           ),
           const SizedBox(height: 16),
-          // Details shimmer
-          ShimmerLoading(
-            isLoading: true,
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.white,
+          // Details shimmer with animation
+          FadeInDown(
+            duration: const Duration(milliseconds: 600),
+            delay: const Duration(milliseconds: 300),
+            child: ShimmerLoading(
+              isLoading: true,
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const ShimmerBox(width: 120, height: 18),
+                    const SizedBox(height: 12),
+                    const ShimmerBox(width: double.infinity, height: 14),
+                    const SizedBox(height: 8),
+                    const ShimmerBox(width: double.infinity, height: 14),
+                    const SizedBox(height: 8),
+                    const ShimmerBox(width: double.infinity, height: 14),
+                    const SizedBox(height: 16),
+                    const ShimmerBox(width: 100, height: 18),
+                    const SizedBox(height: 12),
+                    const ShimmerBox(width: double.infinity, height: 14),
+                    const SizedBox(height: 8),
+                    const ShimmerBox(width: 180, height: 14),
+                  ],
+                ),
               ),
             ),
           ),
           const SizedBox(height: 24),
-          // Blockchain status shimmer
-          ShimmerLoading(
-            isLoading: true,
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
-            child: Container(
-              height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.white,
+          // Blockchain status shimmer with animation
+          FadeInDown(
+            duration: const Duration(milliseconds: 600),
+            delay: const Duration(milliseconds: 400),
+            child: ShimmerLoading(
+              isLoading: true,
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                height: 120,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: const [
+                        ShimmerBox(
+                          width: 30,
+                          height: 30,
+                          borderRadius: 15,
+                        ),
+                        SizedBox(width: 12),
+                        ShimmerBox(width: 150, height: 18),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const ShimmerBox(width: double.infinity, height: 14),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        ShimmerBox(width: 120, height: 14),
+                        ShimmerBox(width: 80, height: 24, borderRadius: 12),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
