@@ -18,6 +18,9 @@ import 'features/blockchain/presentation/providers/blockchain_provider.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
 import 'features/home/presentation/screens/home_screen.dart';
 import 'features/identity/presentation/screens/credential_request_screen.dart';
+import 'features/wallet/presentation/screens/send_transaction_screen.dart';
+import 'features/wallet/presentation/screens/receive_screen.dart';
+import 'features/wallet/presentation/screens/transaction_history_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,6 +74,9 @@ class MyApp extends StatelessWidget {
           routes: {
             '/home': (context) => const HomeScreen(),
             '/credential-request': (context) => const CredentialRequestScreen(),
+            SendTransactionScreen.routeName: (context) => const SendTransactionScreen(),
+            ReceiveScreen.routeName: (context) => const ReceiveScreen(),
+            TransactionHistoryScreen.routeName: (context) => const TransactionHistoryScreen(),
           },
         ),
       ),
