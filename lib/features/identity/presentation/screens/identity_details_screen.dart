@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -11,6 +12,13 @@ import '../../domain/models/digital_identity.dart';
 import '../../../../features/blockchain/presentation/providers/blockchain_provider.dart';
 import '../../../../features/blockchain/presentation/screens/did_setup_screen.dart';
 import '../../../../core/widgets/shimmer_loading.dart';
+import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/services/security_service.dart';
+import 'dart:convert';
+import 'package:path_provider/path_provider.dart';
+import '../../../wallet/presentation/providers/wallet_provider.dart';
+import '../providers/identity_provider.dart';
 
 class IdentityDetailsScreen extends StatefulWidget {
   static const routeName = '/identity-details';
@@ -28,6 +36,7 @@ class IdentityDetailsScreen extends StatefulWidget {
 
 class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
   bool _isLoading = true;
+  final SecurityService _securityService = SecurityService();
   
   @override
   void initState() {
@@ -504,6 +513,317 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
     );
   }
   
+  Future<void> _exportIdentityData(BuildContext context) async {
+    final exportOptions = await showDialog<List<String>>(
+      context: context,
+      builder: (ctx) {
+        final selections = <String>{'identity', 'wallet', 'credentials'};
+        return AlertDialog(
+          title: const Text('Select Data to Export'),
+          content: StatefulBuilder(
+            builder: (context, setState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CheckboxListTile(
+                  value: selections.contains('identity'),
+                  title: const Text('Identity'),
+                  onChanged: (v) => setState(() => v! ? selections.add('identity') : selections.remove('identity')),
+                ),
+                CheckboxListTile(
+                  value: selections.contains('wallet'),
+                  title: const Text('Wallet'),
+                  onChanged: (v) => setState(() => v! ? selections.add('wallet') : selections.remove('wallet')),
+                ),
+                CheckboxListTile(
+                  value: selections.contains('credentials'),
+                  title: const Text('Credentials'),
+                  onChanged: (v) => setState(() => v! ? selections.add('credentials') : selections.remove('credentials')),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, selections.toList()), child: const Text('Next')),
+          ],
+        );
+      },
+    );
+    if (exportOptions == null || exportOptions.isEmpty) return;
+    // Prompt for filename
+    final filename = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController(text: 'diden_backup.didb');
+        return AlertDialog(
+          title: const Text('Enter Backup Filename'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: 'Filename'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Save')),
+          ],
+        );
+      },
+    );
+    if (filename == null || filename.isEmpty) return;
+    setState(() { _isLoading = true; });
+    try {
+      await _securityService.initialize();
+      final prefs = await SharedPreferences.getInstance();
+      final backupData = <String, dynamic>{};
+      if (exportOptions.contains('identity')) {
+        backupData['identities'] = prefs.getString('digital_identities') ?? '{}';
+        backupData['identity_keys'] = prefs.getString('identity_keys') ?? '{}';
+        backupData['did_document'] = prefs.getString('did_document') ?? '{}';
+      }
+      if (exportOptions.contains('wallet')) {
+        backupData['wallets'] = prefs.getString('user_wallets') ?? '{}';
+        backupData['wallet_keys'] = prefs.getString('wallet_keys') ?? '{}';
+      }
+      if (exportOptions.contains('credentials')) {
+        backupData['credentials'] = prefs.getString('verifiable_credentials') ?? '{}';
+      }
+      final backupJson = jsonEncode(backupData);
+      final encryptedBackup = await _securityService.encryptData(backupJson);
+      // Use path_provider to get external storage directory
+      final directory = await getExternalStorageDirectory();
+      if (directory == null) {
+        throw Exception('Unable to access storage directory.');
+      }
+      final filePath = '${directory.path}/$filename';
+      final file = File(filePath);
+      await file.writeAsString(encryptedBackup);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Backup exported to: $filePath'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e, stack) {
+      print('Export failed:  {e.toString()}');
+      print(stack);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: {e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
+  
+  Future<void> _importIdentityData(BuildContext context) async {
+    // Prompt for filename
+    final filename = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController(text: 'diden_backup.didb');
+        return AlertDialog(
+          title: const Text('Enter Backup Filename'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Place your backup file in the app\'s storage directory.'),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(hintText: 'Filename'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Import')),
+          ],
+        );
+      },
+    );
+    if (filename == null || filename.isEmpty) return;
+    setState(() { _isLoading = true; });
+    try {
+      final directory = await getExternalStorageDirectory();
+      if (directory == null) {
+        throw Exception('Unable to access storage directory.');
+      }
+      final filePath = '${directory.path}/$filename';
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw Exception('File not found: $filePath');
+      }
+      final encryptedBackup = await file.readAsString();
+      await _securityService.initialize();
+      final decryptedJson = await _securityService.decryptData(encryptedBackup);
+      final Map<String, dynamic> backupData = jsonDecode(decryptedJson);
+      // Ask user what to import
+      final importOptions = await showDialog<List<String>>(
+        context: context,
+        builder: (ctx) {
+          final selections = <String>{};
+          return AlertDialog(
+            title: const Text('Select Data to Import'),
+            content: StatefulBuilder(
+              builder: (context, setState) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (backupData.containsKey('identities'))
+                    CheckboxListTile(
+                      value: selections.contains('identity'),
+                      title: const Text('Identity'),
+                      onChanged: (v) => setState(() => v! ? selections.add('identity') : selections.remove('identity')),
+                    ),
+                  if (backupData.containsKey('wallets'))
+                    CheckboxListTile(
+                      value: selections.contains('wallet'),
+                      title: const Text('Wallet'),
+                      onChanged: (v) => setState(() => v! ? selections.add('wallet') : selections.remove('wallet')),
+                    ),
+                  if (backupData.containsKey('credentials'))
+                    CheckboxListTile(
+                      value: selections.contains('credentials'),
+                      title: const Text('Credentials'),
+                      onChanged: (v) => setState(() => v! ? selections.add('credentials') : selections.remove('credentials')),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancel')),
+              ElevatedButton(onPressed: () => Navigator.pop(ctx, selections.toList()), child: const Text('Import')),
+            ],
+          );
+        },
+      );
+      if (importOptions == null || importOptions.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      if (importOptions.contains('identity')) {
+        if (backupData['identities'] != null) {
+          await prefs.setString('digital_identities', backupData['identities']);
+        }
+        if (backupData['identity_keys'] != null) {
+          await prefs.setString('identity_keys', backupData['identity_keys']);
+        }
+        if (backupData['did_document'] != null) {
+          await prefs.setString('did_document', backupData['did_document']);
+        }
+      }
+      if (importOptions.contains('wallet')) {
+        if (backupData['wallets'] != null) {
+          await prefs.setString('user_wallets', backupData['wallets']);
+        }
+        if (backupData['wallet_keys'] != null) {
+          await prefs.setString('wallet_keys', backupData['wallet_keys']);
+        }
+      }
+      if (importOptions.contains('credentials')) {
+        if (backupData['credentials'] != null) {
+          await prefs.setString('verifiable_credentials', backupData['credentials']);
+        }
+      }
+      if (mounted) {
+        // Reload providers
+        if (importOptions.contains('identity')) {
+          final identityProvider = Provider.of<IdentityProvider>(context, listen: false);
+          // Use the current userId if available, or reload all
+          await identityProvider.loadIdentity(identityProvider.identity?.controller ?? '');
+        }
+        if (importOptions.contains('wallet')) {
+          final walletProvider = Provider.of<WalletProvider>(context, listen: false);
+          // Use the current userId if available, or reload all
+          await walletProvider.loadWallet(walletProvider.wallet?.userId ?? '');
+        }
+        // Show summary dialog
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Import Successful'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('The following data was imported:'),
+                if (importOptions.contains('identity')) const Text('• Identity'),
+                if (importOptions.contains('wallet')) const Text('• Wallet'),
+                if (importOptions.contains('credentials')) const Text('• Credentials'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e, stack) {
+      print('Import failed:  {e.toString()}');
+      print(stack);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Import failed: {e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
+  
+  Future<void> _shareIdentityFile(BuildContext context) async {
+    // Prompt for filename
+    final filename = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController(text: 'identity_share.didb');
+        return AlertDialog(
+          title: const Text('Enter Filename to Share'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(hintText: 'Filename'),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('Cancel')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Share')),
+          ],
+        );
+      },
+    );
+    if (filename == null || filename.isEmpty) return;
+    setState(() { _isLoading = true; });
+    try {
+      await _securityService.initialize();
+      final prefs = await SharedPreferences.getInstance();
+      final backupData = <String, dynamic>{
+        'identities': prefs.getString('digital_identities') ?? '{}',
+        'identity_keys': prefs.getString('identity_keys') ?? '{}',
+        'did_document': prefs.getString('did_document') ?? '{}',
+      };
+      final backupJson = jsonEncode(backupData);
+      final encryptedBackup = await _securityService.encryptData(backupJson);
+      // Use path_provider to get external storage directory
+      final directory = await getExternalStorageDirectory();
+      if (directory == null) {
+        throw Exception('Unable to access storage directory.');
+      }
+      final filePath = '${directory.path}/$filename';
+      final file = File(filePath);
+      await file.writeAsString(encryptedBackup);
+      // Share the file
+      await Share.shareXFiles([XFile(filePath)], text: 'My D-Iden identity backup');
+    } catch (e, stack) {
+      print('Share failed:  {e.toString()}');
+      print(stack);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Share failed: {e.toString()}'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() { _isLoading = false; });
+    }
+  }
+  
   Widget _buildActionButtons(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,11 +842,7 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
                 child: AppButton(
                   text: 'Export Identity',
                   icon: Icons.download,
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Export functionality coming soon')),
-                    );
-                  },
+                  onPressed: () => _exportIdentityData(context),
                 ),
               ),
               const SizedBox(width: 16),
@@ -535,11 +851,16 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
                 child: AppButton(
                   text: 'Share Identity',
                   icon: Icons.share,
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Share functionality coming soon')),
-                    );
-                  },
+                  onPressed: () => _shareIdentityFile(context),
+                ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: 200,
+                child: AppButton(
+                  text: 'Import Identity',
+                  icon: Icons.upload,
+                  onPressed: () => _importIdentityData(context),
                 ),
               ),
             ],
