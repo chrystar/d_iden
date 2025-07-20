@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
 import '../providers/settings_provider.dart';
 import 'package:d_iden/features/wallet_and_did/presentation/wallet_and_did_management_screen.dart';
+import 'help_center_screen.dart';
+import 'package:d_iden/features/auth/presentation/providers/auth_provider.dart';
 
 class AppSettingsScreen extends StatelessWidget {
   const AppSettingsScreen({Key? key}) : super(key: key);
@@ -45,7 +47,38 @@ class AppSettingsScreen extends StatelessWidget {
                     );
                   },
                 ),
+                _buildSettingCard(
+                  context,
+                  'Help Center',
+                  'FAQs, guides, and support',
+                  Icons.help_outline,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const HelpCenterScreen()),
+                    );
+                  },
+                ),
                 const SizedBox(height: 32),
+                Center(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Log Out'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      await authProvider.signOut();
+                      if (context.mounted) {
+                        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                      }
+                    },
+                  ),
+                ),
               ],
             ),
           )

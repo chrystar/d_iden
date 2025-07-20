@@ -1,3 +1,4 @@
+import 'package:d_iden/features/settings/presentation/screens/help_center_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:animate_do/animate_do.dart';
@@ -133,6 +134,7 @@ class _SettingsPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Settings'),
         elevation: 0,
+        automaticallyImplyLeading: false,
       ),
       body: FadeInUp(
         duration: const Duration(milliseconds: 300),
@@ -207,13 +209,7 @@ class _SettingsPage extends StatelessWidget {
               'Get help with using the app',
               Icons.help_outline,
               () {
-                // This would navigate to a help page in a real app
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Help center will be available in future updates'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => HelpCenterScreen()));
               },
             ),
           ],

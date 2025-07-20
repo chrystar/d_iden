@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 import '../../../wallet/presentation/providers/wallet_provider.dart';
 import '../providers/identity_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class IdentityDetailsScreen extends StatefulWidget {
   static const routeName = '/identity-details';
@@ -792,6 +793,11 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
     if (filename == null || filename.isEmpty) return;
     setState(() { _isLoading = true; });
     try {
+      // Request storage permission
+      final status = await Permission.storage.request();
+      if (!status.isGranted) {
+        throw Exception('Storage permission denied.');
+      }
       await _securityService.initialize();
       final prefs = await SharedPreferences.getInstance();
       final backupData = <String, dynamic>{
@@ -801,14 +807,15 @@ class _IdentityDetailsScreenState extends State<IdentityDetailsScreen> {
       };
       final backupJson = jsonEncode(backupData);
       final encryptedBackup = await _securityService.encryptData(backupJson);
-      // Use path_provider to get external storage directory
-      final directory = await getExternalStorageDirectory();
-      if (directory == null) {
-        throw Exception('Unable to access storage directory.');
+      // Save to Downloads directory
+      final downloadsDir = await getDownloadsDirectory();
+      if (downloadsDir == null) {
+        throw Exception('Unable to access Downloads directory.');
       }
-      final filePath = '${directory.path}/$filename';
+      final filePath = '${downloadsDir.path}/$filename';
       final file = File(filePath);
       await file.writeAsString(encryptedBackup);
+      print('Sharing file at: $filePath');
       // Share the file
       await Share.shareXFiles([XFile(filePath)], text: 'My D-Iden identity backup');
     } catch (e, stack) {
